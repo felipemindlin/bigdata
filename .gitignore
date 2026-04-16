@@ -1,0 +1,15 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+.venv*/
+
+# Notebook checkpoints
+.ipynb_checkpoints/
+
+# Local data outputs
+*.parquet
+*.crc
+
+# Temporary artifacts
+primer-parcial-*.png
