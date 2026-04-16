@@ -1,6 +1,6 @@
 # Cloud Provider Analytics
 
-## Primer Parcial - Diseno preliminar
+## Primer Parcial - Diseño preliminar
 
 Fecha: 2026-04-16  
 Proyecto: Cloud Provider Analytics  
@@ -8,7 +8,7 @@ Curso: Big Data (Primer Cuatrimestre 2026)
 
 ---
 
-Documento de diseno preliminar orientado a validar viabilidad tecnica temprana y dejar una base directa para la implementacion del MVP tecnico (segundo parcial) y la expansion de alcance en la entrega final.
+Documento de diseño preliminar orientado a validar viabilidad técnica temprana y dejar una base directa para la implementación del MVP técnico (segundo parcial) y la expansión de alcance en la entrega final.
 
 \newpage
 
@@ -16,249 +16,300 @@ Documento de diseno preliminar orientado a validar viabilidad tecnica temprana y
 
 - Arquitectura seleccionada: Lambda (batch + streaming).
 - Almacenamiento intermedio: Parquet por zonas Landing/Bronze/Silver/Gold.
-- Serving analitico: AstraDB/Cassandra con modelado query-first.
-- Objetivo del primer parcial: validar diseno y plan de ejecucion, evitando sobre-ingenieria.
+- Serving analítico: AstraDB/Cassandra (keyspace `cloud_analytics`) con modelado query-first.
+- Objetivo del primer parcial: validar diseño y plan de ejecución, evitando sobre-ingeniería.
 
 ## Contexto
-Como equipo de datos de un cloud provider, necesitamos cubrir dos necesidades en paralelo:
-- Near real-time para metricas operativas de uso/costo.
-- Batch diario o mensual para maestros y facturacion.
 
-Los datos llegan con nulos, inconsistencias, duplicados y evolucion de schema (v1/v2), por lo que la arquitectura debe priorizar robustez e idempotencia sin sobre-complicar la primera fase.
+Como equipo de datos de un cloud provider, necesitamos cubrir dos necesidades en paralelo:
+- Near real-time para métricas operativas de uso/costo
+- Batch diario o mensual para maestros y facturación 
+
+Los datos llegan con nulos, inconsistencias, duplicados y evolución de schema (v1/v2), por lo que la arquitectura debe priorizar robustez e idempotencia sin sobre-complicar la primera fase.
 
 ## Objetivo de esta entrega
-Presentar un diseno preliminar claro, visual y accionable para validar viabilidad tecnica temprana. El alcance se mantiene conciso (evitando over-engineering), pero dejando base directa para el MVP tecnico del segundo parcial y el cierre del final.
+
+Presentar un diseño preliminar claro, visual y accionable para validar viabilidad técnica temprana. El alcance se mantiene conciso (evitando over-engineering), pero dejando base directa para el MVP técnico del segundo parcial y el cierre del final.
 
 ## 1) Diagrama de arquitectura de alto nivel
 
-Diagrama por capas y flujo principal:
+Patrón elegido: **Lambda**
+- Batch para maestros/facturación/encuestas.
+- Streaming para eventos de uso en near real-time.
+- Convergencia en Gold y Serving con vista unificada de negocio.
 
-Landing (Raw inmutable)
--> Bronze (Batch + Streaming)
--> Silver (Conformado + Calidad)
--> Gold (Marts de negocio)
--> Serving (AstraDB/Cassandra)
--> BI/Visualizacion
+Justificación del patrón:
+- Evita forzar todo a stream (Kappa) cuando parte de los datos son naturalmente batch.
+- Reduce complejidad inicial en Colab, sin perder escalabilidad conceptual para etapas futuras.
 
-| Capa | Componentes principales | Salida |
-|---|---|---|
-| Landing | customers_orgs, users, resources, support_tickets, marketing_touches, nps_surveys, billing_monthly, usage_events_stream | Archivos crudos inmutables |
-| Bronze | Ingesta batch + ingesta streaming con watermark, dedupe y checkpoint | Parquet estandarizado + trazabilidad tecnica |
-| Silver | Limpieza, tipificacion, joins, reglas de calidad y quarantine, compatibilidad schema v1/v2 | Datos conformados listos para analitica |
-| Gold | Marts FinOps, Soporte y Producto/GenAI | Tablas orientadas a negocio |
-| Serving | AstraDB/Cassandra modelado query-first | Consultas CQL para dashboards |
+\newpage
 
-### Vista visual (alto nivel)
+### Vista de alto nivel
 
 ```text
-+---------------+    +---------------+    +---------------+
-| Landing       | -> | Bronze        | -> | Silver        |
-| Raw           |    | Batch/Stream  |    | Conform+Calid |
-+---------------+    +---------------+    +---------------+
-	|
-	v
-+---------------+    +---------------+
-| Gold          | -> | Serving       |
-| Marts negocio |    | AstraDB/Cass. |
-+---------------+    +---------------+
+Fuentes de datos
+  |- (batch)   customers_orgs, users, resources, support_tickets,
+  |            marketing_touches, nps_surveys, billing_monthly
+  |- (stream)  usage_events_stream/*.jsonl
+       |
+       v
++--------------------------------------------------------------+
+|  DATA LAKE (Parquet por zonas)                               |
+|                                                              |
+|  +----------+   +-----------+   +-----------+   +--------+  |
+|  | LANDING  |-->|  BRONZE   |-->|  SILVER   |-->|  GOLD  |  |
+|  | Raw      |   | Batch +   |   | Conform + |   | Marts  |  |
+|  | inmutable|   | Streaming |   | Calidad   |   | negocio|  |
+|  +----------+   +-----------+   +-----------+   +--------+  |
++--------------------------------------------------------------+
+       |
+       v
++---------------------------+     +-------------------+
+| SERVING                   |     | BI / Visualización|
+| AstraDB/Cassandra         |---->| Superset / Grafana|
+| keyspace: cloud_analytics |     | Tableau / PowerBI |
++---------------------------+     +-------------------+
 ```
 
 \newpage
 
-### Diagramas por capa (paginas dedicadas)
-
-#### Capa 1 - Landing
+### Capa 1 - Landing
 
 ```text
-Fuentes de entrada
-	|- customers_orgs.csv
-	|- users.csv
-	|- resources.csv
-	|- support_tickets.csv
-	|- marketing_touches.csv
-	|- nps_surveys.csv
-	|- billing_monthly.csv
-	|- usage_events_stream/*.jsonl
+Fuentes de entrada (raw inmutable)
+  |- customers_orgs.csv    (maestro de organizaciones)
+  |- users.csv             (usuarios por organización)
+  |- resources.csv         (VMs, contenedores, DBs, etc.)
+  |- support_tickets.csv   (tickets de soporte)
+  |- marketing_touches.csv (interacciones de marketing)
+  |- nps_surveys.csv       (encuestas NPS)
+  |- billing_monthly.csv   (facturación mensual)
+  |- usage_events_stream/  (eventos JSONL con schema v1 y v2)
+       |- part-0001.jsonl
+       |- part-0002.jsonl
+       |- ...
 
-Salida: archivos crudos inmutables (sin transformacion)
+Salida: archivos crudos inmutables, sin transformación
 ```
 
-Objetivo de la capa:
-- Mantener una referencia fiel de origen para auditoria y reproceso.
+Objetivo: mantener referencia fiel de origen para auditoría y reproceso.
 
 \newpage
 
-#### Capa 2 - Bronze
+### Capa 2 - Bronze
 
 ```text
 Landing
-	|--(Batch ingest)-------------------------------> Bronze Batch (Parquet)
-	|--(Structured Streaming ingest)---------------> Bronze Stream (Parquet)
+  |--(Batch ingest: PySpark DataFrame)----------------------> Bronze Batch (Parquet)
+  |    maestros + facturación
+  |
+  |--(Structured Streaming ingest: PySpark)-----------------> Bronze Stream (Parquet)
+       usage_events_stream/*.jsonl
 
-Controles base:
-	- Schema explicito
-	- ingest_ts / source_file
-	- watermark + dedupe event_id (stream)
-	- checkpoint
+Controles aplicados en ambos paths:
+  - Schema explícito declarado (StructType)
+  - Campos de trazabilidad: ingest_ts, source_file
+  - [Stream] watermark: 1 hora sobre event_ts
+  - [Stream] deduplicación por event_id dentro de watermark
+  - [Stream] checkpointing en disco para idempotencia
+  - Particionado: fecha de ingesta (ingest_date)
 ```
 
-Objetivo de la capa:
-- Estandarizar estructura minima y asegurar trazabilidad tecnica temprana.
+Objetivo: estandarizar estructura mínima y asegurar trazabilidad técnica temprana.
 
 \newpage
 
-#### Capa 3 - Silver
+### Capa 3 - Silver
 
 ```text
-Bronze Batch + Bronze Stream
-						|
-						+--> Limpieza y tipificacion
-						+--> Conformance y joins con maestros
-						+--> Reglas de calidad + quarantine
-						+--> Compatibilizacion schema v1/v2
-						v
-				Silver conformado
+                       PATH BATCH                    PATH STREAMING
+                    (maestros/billing)            (usage_events_stream)
+                           |                               |
+                     validaciones                   validaciones
+                  - org_id != null               - event_id != null
+                  - billing amount >= 0          - cost_increment >= 0
+                  - nps_score entre 0 y 10       - unit != null si value != null
+                           |                               |
+                           |                      compatibilización schema
+                           |                      - v1: agregar campos ausentes
+                           |                      - v2: normalizar nombres de campo
+                           |                               |
+                           +----------+  +----------------+
+                                      |  |
+                                      v  v
+                             Silver conformado
+                     - Joins maestros (org, user, resource)
+                     - Flags de calidad por registro
+                     - Registros inválidos -> quarantine/
+                     - Datos válidos -> silver/
 ```
 
-Objetivo de la capa:
-- Convertir datos crudos en datos analiticamente confiables.
+Objetivo: convertir datos crudos en datos analíticamente confiables.
 
 \newpage
 
-#### Capa 4 - Gold
+### Capa 4 - Gold
 
 ```text
-Silver
-	|- Mart FinOps (org_daily_usage_by_service)
-	|- Mart Soporte
-	|- Mart Producto/GenAI
+Silver (batch + stream convergidos)
+  |
+  +-- gold/org_daily_usage_by_service      (FinOps: uso diario por org y servicio)
+  |
+  +-- gold/revenue_by_org_month            (FinOps: revenue mensual por org)
+  |
+  +-- gold/cost_anomaly_mart               (FinOps: anomalías de costo por org/servicio)
+  |
+  +-- gold/tickets_by_org_date             (Soporte: tickets por org y fecha)
+  |
+  +-- gold/genai_tokens_by_org_date        (Producto/GenAI: consumo de tokens por org)
 
-Salida: datasets orientados a consulta de negocio
+Salida: datasets orientados a consultas de negocio, particionados por fecha
 ```
 
-Objetivo de la capa:
-- Exponer metricas y KPIs listos para consumo analitico.
+Objetivo: exponer métricas y KPIs listos para consumo analítico.
 
 \newpage
 
-#### Capa 5 - Serving
+### Capa 5 - Serving
 
 ```text
-Gold -> AstraDB/Cassandra (query-first)
-											|
-											+--> Consultas CQL
-											+--> Dashboards BI
+Gold -> AstraDB/Cassandra
+        keyspace: cloud_analytics
+
+Tablas y modelo query-first:
+
+  TABLA                             PRIMARY KEY
+  --------------------------------  ------------------------------------------
+  org_daily_usage_by_service        ((org_id, service), usage_date DESC)
+  revenue_by_org_month              ((org_id), month DESC)
+  cost_anomaly_mart                 ((org_id, service), anomaly_date DESC)
+  tickets_by_org_date               ((org_id), ticket_date DESC, severity)
+  genai_tokens_by_org_date          ((org_id), usage_date DESC)
+
+Escritura: foreachBatch (streaming) o Spark-Cassandra connector (batch)
+Consultas: CQL (mínimo 2 en Parcial 2, 5 en Final)
+Consumo final: Superset / Grafana / Tableau / PowerBI
 ```
 
-Objetivo de la capa:
-- Responder consultas operativas y ejecutivas con baja latencia.
+Objetivo: responder consultas operativas y ejecutivas con baja latencia.
 
-Patron elegido: **Lambda**
-- Batch para maestros/facturacion/encuestas.
-- Streaming para eventos de uso en near real-time.
-- Esta decision cumple lo obligatorio del MVP y deja camino directo a la entrega final.
-
-Justificacion del patron:
-- Evita forzar todo a stream (Kappa) cuando parte de los datos son naturalmente batch.
-- Reduce complejidad inicial en Colab, sin perder escalabilidad conceptual para etapas futuras.
-- Permite convergencia en Gold y Serving con una vista unificada de negocio.
+\newpage
 
 ## 2) Mapeo de requisitos a componentes
 
-| Requisito clave | Componente / tecnologia | Justificacion | Etapa de validacion |
-|---|---|---|---|
-| Near real-time operativo | Spark Structured Streaming (Bronze stream) | Latencia baja con micro-batches y control de late data | Parcial 2 |
-| Batch de maestros/facturacion | Spark batch + Parquet particionado (Bronze batch) | Eficiente para datos periodicos y reproceso controlado | Parcial 2 |
-| Calidad de datos | Reglas + flags + quarantine en Silver | Aisla datos invalidos sin frenar el pipeline | Parcial 2 y Final |
-| Evolucion de schema v1/v2 | Compatibilizacion en Silver + contratos de schema | Reduce roturas por drift y habilita continuidad analitica | Parcial 2 y Final |
-| Enriquecimiento y features | Joins con org/users/resources + features de negocio | Prepara marts para FinOps, Soporte y Producto | Parcial 2 y Final |
-| Idempotencia | Checkpointing + keys naturales + upserts | Reejecucion sin duplicados y consistencia en serving | Parcial 2 y Final |
-| Serving para consultas | AstraDB/Cassandra (query-first) | Baja latencia y modelo alineado a preguntas de negocio | Parcial 2 y Final |
-| Performance | partitionBy + repartition/coalesce + reparquet cuando aplique | Control de costo/tiempo sobre Colab y futura escalabilidad | Final |
-| Demo ejecutiva | Consultas CQL sobre marts Gold | Evidencia funcional para dashboarding y presentacion | Final (2 minimas en Parcial 2) |
+| Requisito clave | Componente / tecnología | Justificación | 5V asociada | Etapa |
+|---|---|---|---|---|
+| Near real-time operativo (~500K eventos/día) | Spark Structured Streaming (Bronze stream) | Latencia baja con micro-batches y control de late data | Velocidad | Parcial 2 |
+| Batch de maestros/facturación (<100GB/día) | Spark batch + Parquet particionado (Bronze batch) | Eficiente para datos periódicos y reproceso controlado | Volumen | Parcial 2 |
+| Calidad de datos y trazabilidad | Reglas + flags + quarantine en Silver | Aisla datos inválidos sin frenar el pipeline | Veracidad | Parcial 2 y Final |
+| Evolución de schema v1/v2 | Compatibilización en Silver + contratos de schema | Reduce roturas por drift y habilita continuidad analítica | Variedad | Parcial 2 y Final |
+| Enriquecimiento y features de negocio | Joins con org/users/resources + marts Gold | Prepara 5 marts para FinOps, Soporte y Producto | Valor | Parcial 2 y Final |
+| Idempotencia end-to-end | Checkpointing + keys naturales + upserts CQL | Reejección sin duplicados y consistencia en serving | Veracidad | Parcial 2 y Final |
+| Serving para consultas de baja latencia | AstraDB/Cassandra query-first (cloud_analytics) | Modelo alineado a preguntas de negocio, sin full-scan | Velocidad | Parcial 2 y Final |
+| Performance y escalabilidad | partitionBy + repartition/coalesce | Control de costo/tiempo en Colab y escalabilidad futura | Volumen | Final |
 
-### Inclusion explicita de 5Vs de Big Data
+### 5Vs de Big Data aplicadas al proyecto
 
-| V | Aplicacion en el proyecto |
+| V | Aplicación concreta en Cloud Provider Analytics |
 |---|---|
-| Volumen | Eventos de uso continuos + maestros historicos en Parquet particionado |
-| Velocidad | Ingesta streaming con micro-batches y watermark |
-| Variedad | CSV + JSONL + evolucion de schema (v1/v2) |
-| Veracidad | Reglas de calidad, quarantine y trazabilidad de errores |
-| Valor | Marts de FinOps, Soporte y Producto para decisiones operativas |
+| Volumen | ~500K eventos/día via stream + <100GB/día en maestros y billing; almacenamiento en Parquet particionado por fecha |
+| Velocidad | Ingesta streaming con micro-batches, watermark de 1h sobre event_ts y manejo de late data |
+| Variedad | 7 fuentes CSV (batch) + JSONL multischema (stream): schema v1 (campos originales) y schema v2 (campos extendidos desde aprox. día 45) |
+| Veracidad | Reglas de calidad por path, flags de validación por registro, quarantine de datos inválidos y trazabilidad de errores por capa |
+| Valor | 5 marts Gold orientados a negocio: FinOps (uso, revenue, anomalías), Soporte (tickets) y Producto/GenAI (tokens) |
 
 ## 3) Flujo de datos (data pipeline)
 
 Flujo operativo por path:
-1. Path batch: Landing (maestros/facturacion) -> Bronze batch -> Silver conformado.
-2. Path stream: Landing (usage events) -> Bronze stream -> Silver conformado.
-3. Convergencia: Silver -> Gold (marts por dominio).
-4. Serving: Gold -> AstraDB/Cassandra -> consultas CQL y dashboards.
 
-Modos declarados:
-- Batch: maestros y facturacion (periodico diario/mensual).
-- Streaming: usage_events_stream con dedupe por event_id y manejo de late data.
+```text
+[PATH BATCH]
+Landing (CSV maestros/billing)
+  --> PySpark DataFrame batch
+  --> Bronze Batch (Parquet, schema explícito, ingest_ts)
+  --> Silver (validaciones, joins, quarantine)
+  --> Gold (marts FinOps, Soporte, Producto)
+  --> AstraDB/Cassandra (batch write via Spark connector)
+
+[PATH STREAMING]
+Landing (JSONL usage_events_stream)
+  --> PySpark Structured Streaming
+  --> Bronze Stream (Parquet, watermark 1h, dedupe event_id, checkpoint)
+  --> Silver (validaciones stream, compatibilización schema v1/v2, quarantine)
+  --> Gold (actualización incremental de marts)
+  --> AstraDB/Cassandra (foreachBatch write)
+
+[CONVERGENCIA]
+Gold (ambos paths) --> AstraDB/Cassandra --> CQL --> BI/Dashboards
+```
 
 Herramientas por paso:
-- Landing -> Bronze batch: PySpark (DataFrame batch) en Colab.
-- Landing -> Bronze streaming: PySpark Structured Streaming.
-- Bronze -> Silver: transformaciones Spark SQL/DataFrame + reglas de calidad.
-- Silver -> Gold: agregaciones Spark por mart.
-- Gold -> Serving: Spark -> AstraDB/Cassandra (conector o foreachBatch).
-- Serving -> consumo: CQL + BI (Tableau/PowerBI/Superset/Grafana).
 
-Resultado esperado del flujo:
-- Misma capa Gold alimentada por ambos paths, evitando silos entre historico y near real-time.
-- Base tecnica lista para ampliar de FinOps minimo (Parcial 2) a cobertura completa de negocio (Final).
+| Paso | Herramienta | Modo |
+|---|---|---|
+| Landing -> Bronze (maestros) | PySpark DataFrame | Batch diario/mensual |
+| Landing -> Bronze (eventos) | PySpark Structured Streaming | Micro-batch continuo |
+| Bronze -> Silver | Spark SQL / DataFrame + reglas de calidad | Batch y trigger-once |
+| Silver -> Gold | Spark agregaciones por mart | Batch y trigger-once |
+| Gold -> Serving | Spark-Cassandra connector / foreachBatch | Batch y streaming |
+| Serving -> consumo | CQL + BI (Superset/Grafana/Tableau) | On-demand |
+
+\newpage
 
 ## 4) Asunciones y riesgos iniciales
 
-Asunciones:
+### Asunciones
 
-| Asuncion | Razonable para esta etapa | Mitigacion si no se cumple |
-|---|---|---|
-| Volumen inicial manejable en Colab | Permite MVP sin infraestructura adicional | Particionado agresivo y escalado a entorno administrado |
-| event_id util para dedupe | Habilita idempotencia temprana | Reglas de unicidad + monitoreo de colisiones |
-| Convivencia schema v1/v2 | Evolucion esperada en eventos | Contratos de schema + compatibilizacion en Silver |
-| AstraDB disponible para serving | Necesario para demostrar query-first | Validacion temprana de keyspace/tabla y plan de fallback local |
-
-Riesgos:
-
-| Riesgo | Probabilidad | Impacto | Mitigacion |
+| # | Asunción | Base técnica | Mitigación si no se cumple |
 |---|---|---|---|
-| OOM en Colab por crecimiento de datos | Media | Alta | Procesamiento incremental, coalesce/repartition y ajuste de particiones |
-| Late data mayor al watermark | Baja | Media | Ajustar watermark y auditar dropped events |
-| Drift de schema no detectado a tiempo | Media | Alta | Alertas y validaciones de schema por capa |
-| Duplicados en serving por fallas de idempotencia | Media | Alta | Checkpointing estricto + upserts por clave natural |
-| Hot partitions en Cassandra | Media | Media/Alta | Revisar cardinalidad y claves de particion por consulta |
-| Acople alto de notebooks y logica | Media | Media | Modularizar transformaciones en componentes reutilizables |
+| A1 | Volumen manejable en Google Colab (15GB RAM, sesiones de 12h) | Datos de muestra + particionado desde Bronze | Particionado agresivo por fecha, coalesce, escalar a Colab Pro o GCS |
+| A2 | `event_id` es único y útil para deduplicación en stream | Campo presente en ambas versiones de schema | Reglas de unicidad compuesta + monitoreo de colisiones por batch |
+| A3 | Schema v2 comienza a aparecer aproximadamente en el día 45 del dataset | Evolución gradual documentada en los datos | Contratos de schema explícitos + compatibilización en Silver desde día 1 |
+| A4 | AstraDB free tier disponible (80GB, sin vencimiento de prueba) | Plan gratuito documentado por DataStax | Validación temprana de keyspace y fallback a Cassandra local via Docker |
+| A5 | Sin broker Kafka: streaming simulado desde archivos JSONL en disco | Contexto académico en Colab | Arquitectura desacoplada que permite incorporar Kafka como fuente en producción |
 
-## 5) Estimacion de esfuerzo y recursos (rough estimate)
+### Riesgos
+
+| Riesgo | Probabilidad | Impacto | Mitigación |
+|---|---|---|---|
+| OOM en Colab por crecimiento de datos | Media | Alta | Procesamiento incremental, coalesce/repartition y ajuste de particiones por fecha |
+| Late data mayor al watermark de 1h | Baja | Media | Ajustar watermark según observación empírica y auditar dropped events por batch |
+| Drift de schema no detectado a tiempo | Media | Alta | Validaciones de schema explícito por capa + alertas en Silver si aparecen campos nuevos |
+| Duplicados en serving por falla de idempotencia | Media | Alta | Checkpointing estricto + upserts por clave natural en Cassandra (INSERT IF NOT EXISTS) |
+| Hot partitions en Cassandra por baja cardinalidad | Media | Media/Alta | Revisar cardinalidad de partition key y agregar bucketing si es necesario |
+| Acople alto entre notebooks y lógica de negocio | Media | Media | Modularizar transformaciones en funciones reutilizables por capa |
+
+## 5) Estimación de esfuerzo y recursos (rough estimate)
 
 Supuesto de equipo: 3 personas.
 
 | Bloque | Tiempo estimado | Roles principales |
 |---|---|---|
-| Diseno y base tecnica (esta entrega) | 3 a 4 dias | Data Architect + Data Engineer |
-| Ingesta Bronze batch/stream (MVP) | 4 a 6 dias | Data Engineer Batch + Data Engineer Streaming |
-| Silver (calidad + enriquecimiento) | 4 a 6 dias | Data Engineer + Analytics Engineer |
-| Gold minimo + Cassandra (Parcial 2) | 3 a 5 dias | Data Engineer + Data Modeler |
-| Expansion de marts + optimizacion (Final) | 6 a 9 dias | Data Engineer + Analytics Engineer |
-| Storytelling, presentacion y demo final | 3 a 4 dias | Todo el equipo |
+| Diseño y base técnica (esta entrega) | 3 a 4 días | Data Architect + Data Engineer |
+| Ingesta Bronze batch/stream + idempotencia | 4 a 6 días | Data Engineer Batch + Data Engineer Streaming |
+| Silver (calidad + quarantine + enriquecimiento) | 4 a 6 días | Data Engineer + Analytics Engineer |
+| Gold mínimo + modelo Cassandra (Parcial 2) | 3 a 5 días | Data Engineer + Data Modeler |
+| Expansión de marts + optimización (Final) | 6 a 9 días | Data Engineer + Analytics Engineer |
+| Storytelling, presentación y demo final | 3 a 4 días | Todo el equipo |
 
-Recursos minimos:
-- PySpark en Google Colab.
-- Almacenamiento en Parquet por zonas (Bronze/Silver/Gold + quarantine/checkpoints).
-- AstraDB/Cassandra para serving.
-- Herramienta de visualizacion para demo.
+**Total estimado:** 23 a 34 días-persona distribuidos en ~3 semanas de trabajo en equipo.
 
-Costo estimado de referencia:
-- Escenario base: costo cercano a cero usando free tiers.
-- Escenario extendido: costo mensual bajo si se requiere Colab Pro y/o mayor almacenamiento.
+### Recursos y costos
+
+| Recurso | Tier utilizado | Costo estimado |
+|---|---|---|
+| Google Colab | Free (15GB RAM, GPU básica, 12h sesión) | USD 0 |
+| Google Drive | Free (15GB almacenamiento) | USD 0 |
+| AstraDB (Cassandra gestionado) | Free (80GB, sin vencimiento) | USD 0 |
+| Herramienta BI (Apache Superset) | Open source, self-hosted en Colab | USD 0 |
+| **Escenario base** | **Todo free tier** | **USD 0/mes** |
+| Colab Pro (si se requiere más RAM/GPU) | Pro plan | USD 10,49/mes |
+| **Escenario extendido** | **Colab Pro** | **~USD 10,49/mes** |
 
 ## 6) Decisiones para facilitar entregas futuras
-- Estandarizar nomenclatura de datasets y particiones desde Bronze.
-- Mantener contratos de schema por capa (landing/bronze/silver/gold).
-- Diseñar Gold por preguntas de negocio (query-first) para simplificar Cassandra.
-- Construir trazabilidad de calidad desde el MVP (evita retrabajo en final).
-- Documentar decisiones y trade-offs por iteracion para reutilizar en presentacion/video.
+
+- Estandarizar nomenclatura de datasets y particiones desde Bronze (`/bronze/batch/`, `/bronze/stream/`, `/silver/`, `/gold/`, `/quarantine/`, `/checkpoints/`).
+- Mantener contratos de schema por capa (StructType declarado en código, no inferido).
+- Diseñar Gold por preguntas de negocio (query-first) para que el modelo Cassandra sea directo.
+- Construir trazabilidad de calidad desde el MVP para evitar retrabajo en la entrega final.
+- Documentar decisiones y trade-offs por iteración para reutilizar en presentación y video final.
