@@ -1,15 +1,5 @@
 # bigdata - Cloud Provider Analytics
 
-Estado actual:
-- Entrega del primer parcial completada en Markdown, con diseno preliminar y diagramas.
-- Roadmap creado para ejecutar el segundo parcial y el final por iteraciones.
+Este proyecto fue realizado por Jeremías Feferovich, Felipe Mindlin, Martín Zahnd, Florencia Carrica y Gianfranco Magliotti, en el contexto de la materia 72.80 - Big Data, dictada por el profesor Diego Mosquera.
 
-## Documentos clave
-- docs/primer_parcial_diseno_preliminar.md
-- plan/roadmap_entregas.md
-
-## Siguiente paso sugerido
-Implementar la iteracion 1 del roadmap:
-1. Ingesta batch de maestros a Bronze Parquet.
-2. Ingesta streaming de eventos con watermark, dedupe y checkpoint.
-3. Preparar el primer mart FinOps para Cassandra.
+El proyect osimula el rol del equipo de datos de un proveedor cloud que necesita cubrir, en paralelo, métricas operativas de uso/costo en near real-time y procesos batch diarios/mensuales para maestros y facturación, lidiando con datos sucios (nulos, duplicados, inconsistencias y evolución de schema v1/v2).
