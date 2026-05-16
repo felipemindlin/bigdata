@@ -1,0 +1,4 @@
+org_id,month,revenue_usd,credits_usd,taxes_usd,currency
+org_001,2026-03,12000.0,300.0,1700.0,USD
+org_002,2026-03,7400.0,120.0,860.0,USD
+org_003,2026-03,1800.0,0.0,220.0,USD

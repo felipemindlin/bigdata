@@ -1,0 +1,4 @@
+org_id,org_name,industry,region,plan,nps_score
+org_001,Acme Cloud,retail,us-east,enterprise,42.0
+org_002,Beta Labs,health,eu-west,pro,65.0
+org_003,Gamma AI,tech,sa-east,starter,15.0

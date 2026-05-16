@@ -1,0 +1,5 @@
+user_id,org_id,role,is_active
+u_001,org_001,admin,true
+u_002,org_001,analyst,true
+u_003,org_002,engineer,false
+u_004,org_003,owner,true

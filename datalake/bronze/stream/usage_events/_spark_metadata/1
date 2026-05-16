@@ -1,0 +1,2 @@
+v1
+{"path":"file:///home/pipemind/big/datalake/bronze/stream/usage_events/ingest_date=2026-05-16/part-00002-a104a5b9-64b1-4cba-91e1-1c26e811aabe.c000.snappy.parquet","size":5579,"isDir":false,"modificationTime":1778945879253,"blockReplication":1,"blockSize":33554432,"action":"add"}
