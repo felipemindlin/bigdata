@@ -14,8 +14,15 @@ from src.pipeline.spark_utils import build_spark
 REPORT_PATH = BASE / "docs" / "segundo_parcial" / "evidencia_ejecucion.md"
 
 
+def _rel(path: Path) -> str:
+    try:
+        return str(path.relative_to(BASE))
+    except ValueError:
+        return str(path)
+
+
 def table_line(name: str, rows: int, path: Path) -> str:
-    return f"| {name} | {rows} | `{path}` |"
+    return f"| {name} | {rows} | `{_rel(path)}` |"
 
 
 def main() -> None:

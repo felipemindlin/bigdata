@@ -1,10 +1,13 @@
 import json
+import os
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 BASE = Path(__file__).resolve().parents[1]
 LANDING = BASE / "datalake" / "landing"
 STREAM_DIR = LANDING / "usage_events_stream"
+
+REFERENCE_TS = os.environ.get("BOOTSTRAP_REFERENCE_TS", "2026-05-16T12:00:00+00:00")
 
 
 def write_csv(path: Path, header: list[str], rows: list[list[str]]) -> None:
@@ -57,7 +60,9 @@ def main() -> None:
         ],
     )
 
-    now = datetime.now(timezone.utc)
+    now = datetime.fromisoformat(REFERENCE_TS)
+    if now.tzinfo is None:
+        now = now.replace(tzinfo=timezone.utc)
 
     events_a = [
         {

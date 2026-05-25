@@ -1,7 +1,20 @@
+import os
+from datetime import datetime, timezone
+
 from pyspark.sql import functions as F
 
 from .config import BRONZE_STREAM_DIR, CHECKPOINT_DIR, QUARANTINE_DIR, USAGE_STREAM_DIR
 from .schemas import USAGE_EVENT_SCHEMA
+
+
+def _reference_expr():
+    raw = os.environ.get("BOOTSTRAP_REFERENCE_TS")
+    if not raw:
+        return F.current_timestamp()
+    ref_dt = datetime.fromisoformat(raw)
+    if ref_dt.tzinfo is None:
+        ref_dt = ref_dt.replace(tzinfo=timezone.utc)
+    return F.lit(ref_dt).cast("timestamp")
 
 
 def run_bronze_stream(spark) -> None:
@@ -14,6 +27,8 @@ def run_bronze_stream(spark) -> None:
         .load(str(USAGE_STREAM_DIR))
     )
 
+    reference_ts = _reference_expr()
+
     stream_df = (
         stream_df.withColumn("ingest_ts", F.current_timestamp())
         .withColumn("source_file", F.input_file_name())
@@ -22,7 +37,7 @@ def run_bronze_stream(spark) -> None:
         .dropDuplicates(["event_id"])
         .withColumn(
             "is_late_data",
-            F.col("event_ts") < F.expr("current_timestamp() - INTERVAL 1 HOURS"),
+            F.col("event_ts") < (reference_ts - F.expr("INTERVAL 1 HOURS")),
         )
     )
 

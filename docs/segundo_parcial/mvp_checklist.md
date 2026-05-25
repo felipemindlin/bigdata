@@ -6,18 +6,23 @@ Landing -> Bronze -> Silver -> Gold -> Serving (Cassandra)
 
 ## Evidencias que deben adjuntar
 
-- [ ] Bronze batch generado para 3 maestros:
+- [x] Bronze batch generado para 3 maestros:
   - customers_orgs
   - users
   - billing_monthly
-- [ ] Bronze streaming generado desde `usage_events_stream/*.jsonl`.
-- [ ] Watermark + dedupe por `event_id` + checkpoint activo.
-- [ ] Silver con 3 reglas de calidad aplicadas.
-- [ ] Quarantine poblada con ejemplos invalidos.
-- [ ] Gold con `org_daily_usage_by_service` generado.
-- [ ] Cassandra: keyspace y tabla(s) creadas con `cassandra/schema.cql`.
-- [ ] Dos consultas minimas ejecutadas (`cassandra/queries_minimas.cql`).
-- [ ] Evidencia de idempotencia (re-ejecucion sin duplicados).
+- [x] Bronze streaming generado desde `usage_events_stream/*.jsonl`.
+- [x] Watermark + dedupe por `event_id` + checkpoint activo.
+- [x] Silver con 3 reglas de calidad aplicadas.
+- [x] Quarantine poblada con ejemplos invalidos.
+- [x] Gold con `org_daily_usage_by_service` generado.
+- [x] Cassandra: keyspace y tabla(s) creadas con `cassandra/schema.cql`.
+- [x] Dos consultas minimas ejecutadas (`cassandra/queries_minimas.cql`).
+- [x] Evidencia de idempotencia (re-ejecucion sin duplicados).
+
+Evidencia capturada en:
+- `docs/segundo_parcial/evidencia_ejecucion.md` (conteos por capa + muestras)
+- `docs/segundo_parcial/cassandra_query_results.md` (output real de las 2 queries)
+- `docs/segundo_parcial/idempotencia.md` (comparativa run 1 vs run 2)
 
 ## Comandos recomendados
 

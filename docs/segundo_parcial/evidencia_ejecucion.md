@@ -4,15 +4,15 @@
 
 | Dataset | Filas | Path |
 |---|---:|---|
-| bronze_batch/customers_orgs | 3 | `/home/pipemind/big/datalake/bronze/batch/customers_orgs` |
-| bronze_batch/users | 4 | `/home/pipemind/big/datalake/bronze/batch/users` |
-| bronze_batch/billing_monthly | 3 | `/home/pipemind/big/datalake/bronze/batch/billing_monthly` |
-| bronze_stream/usage_events | 5 | `/home/pipemind/big/datalake/bronze/stream/usage_events` |
-| quarantine/late_data | 1 | `/home/pipemind/big/datalake/quarantine/late_data` |
-| silver/usage_enriched | 3 | `/home/pipemind/big/datalake/silver/usage_enriched` |
-| silver/daily_features | 3 | `/home/pipemind/big/datalake/silver/daily_features` |
-| quarantine/silver_quality | 2 | `/home/pipemind/big/datalake/quarantine/silver_quality` |
-| gold/org_daily_usage_by_service | 3 | `/home/pipemind/big/datalake/gold/org_daily_usage_by_service` |
+| bronze_batch/customers_orgs | 3 | `datalake/bronze/batch/customers_orgs` |
+| bronze_batch/users | 4 | `datalake/bronze/batch/users` |
+| bronze_batch/billing_monthly | 3 | `datalake/bronze/batch/billing_monthly` |
+| bronze_stream/usage_events | 5 | `datalake/bronze/stream/usage_events` |
+| quarantine/late_data | 1 | `datalake/quarantine/late_data` |
+| silver/usage_enriched | 3 | `datalake/silver/usage_enriched` |
+| silver/daily_features | 3 | `datalake/silver/daily_features` |
+| quarantine/silver_quality | 2 | `datalake/quarantine/silver_quality` |
+| gold/org_daily_usage_by_service | 3 | `datalake/gold/org_daily_usage_by_service` |
 
 ## Reglas de calidad y quarantine (muestra)
 

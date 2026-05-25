@@ -27,7 +27,6 @@ El pipeline esta pensado para datos con nulos, duplicados, inconsistencias y evo
 
 ## Quickstart (MVP segundo parcial)
 
-1. Instalar dependencias:
 1. Crear y activar un entorno virtual (recomendado) e instalar dependencias:
 
 ```bash
@@ -39,7 +38,10 @@ pip install -r requirements.txt
 2. Ejecutar pipeline local (sin carga Cassandra):
 
 ```bash
-# generar datos de ejemplo (si no hay landing real)
+# generar datos de ejemplo (si no hay landing real).
+# Fijar fecha de referencia para que la demo sea reproducible
+# (la query #1 espera usage_date en mayo 2026).
+export BOOTSTRAP_REFERENCE_TS="2026-05-16T12:00:00+00:00"
 python scripts/bootstrap_sample_landing.py
 
 # ejecutar flujo end-to-end (bronze -> silver -> gold)
