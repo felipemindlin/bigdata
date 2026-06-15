@@ -38,19 +38,32 @@ El pipeline esta pensado para datos con nulos, duplicados, inconsistencias y evo
 1. Instalar dependencias:
 
 ```bash
-python -m pip install -r requirements.txt
+python3 -m venv .venv
+. .venv/bin/activate
+pip install -r requirements.txt
 ```
 
 2. Ejecutar pipeline local (sin carga Cassandra):
 
 ```bash
+# generar datos de ejemplo (si no hay landing real).
+# Fijar fecha de referencia para que la demo sea reproducible
+# (la query #1 espera usage_date en junio 2026).
+export BOOTSTRAP_REFERENCE_TS="2026-06-15T12:00:00+00:00"
+python scripts/bootstrap_sample_landing.py
+
+# ejecutar flujo end-to-end (bronze -> silver -> gold)
 python scripts/run_mvp.py
 ```
 
 3. Ejecutar pipeline con carga a Cassandra:
 
 ```bash
-python scripts/run_mvp.py --with-cassandra --cassandra-host 127.0.0.1 --cassandra-port 9042 --keyspace cloud_analytics
+python scripts/run_mvp.py \
+  --with-cassandra \
+  --cassandra-host 127.0.0.1 \
+  --cassandra-port 9042 \
+  --keyspace cloud_analytics
 ```
 
 4. Crear schema y correr consultas:
