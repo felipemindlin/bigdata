@@ -22,9 +22,7 @@ El pipeline esta pensado para datos con nulos, duplicados, inconsistencias y evo
 - `scripts/run_mvp.py`: runner end-to-end del MVP tecnico
 - `cassandra/schema.cql`: keyspace y tablas
 - `cassandra/queries_minimas.cql`: consultas minimas (#1 y #2)
-- `plan/roadmap_entregas.md`: roadmap actualizado (Parcial 2 + Final)
 - `docs/segundo_parcial/mvp_checklist.md`: checklist de evidencia de entrega
-- `docs/segundo_parcial/bitacora_apropiacion_tecnica.md`: decisiones y trade-offs
 
 ## Requisitos
 
@@ -85,7 +83,7 @@ Correr el pipeline con carga a Cassandra:
 python scripts/run_mvp.py --with-cassandra --cassandra-host 127.0.0.1 --cassandra-port 9042 --keyspace cloud_analytics
 ```
 
-> El loader crea el keyspace y las tablas automaticamente. `cassandra/schema.cql` es **opcional**: queda como referencia para crear el schema manualmente sin Spark.
+El loader crea el keyspace y las tablas automaticamente, asi que `cassandra/schema.cql` es opcional: queda como referencia para crear el schema manualmente sin Spark.
 
 5. Correr las consultas minimas (`cqlsh` va dentro del contenedor):
 
