@@ -5,6 +5,7 @@ Este proyecto fue realizado por Jeremias Feferovich, Felipe Mindlin, Martin Zahn
 ## Contexto
 
 El proyecto simula el rol del equipo de datos de un proveedor cloud que debe cubrir:
+
 - metricas operativas near real-time de uso/costo
 - procesamiento batch diario/mensual para maestros y facturacion
 
@@ -24,6 +25,14 @@ El pipeline esta pensado para datos con nulos, duplicados, inconsistencias y evo
 - `plan/roadmap_entregas.md`: roadmap actualizado (Parcial 2 + Final)
 - `docs/segundo_parcial/mvp_checklist.md`: checklist de evidencia de entrega
 - `docs/segundo_parcial/bitacora_apropiacion_tecnica.md`: decisiones y trade-offs
+
+## Requisitos
+
+Antes de correr el proyecto, asegurate de tener:
+
+- **Java 17 (JDK)**
+- **Python 3.9 o superior**
+- **Docker**
 
 ## Quickstart (MVP segundo parcial)
 
@@ -48,17 +57,57 @@ python scripts/bootstrap_sample_landing.py
 python scripts/run_mvp.py
 ```
 
-3. Ejecutar pipeline con carga a Cassandra (si dispone de Cassandra local/remote):
+3. Validar la corrida:
+
+```bash
+python scripts/generate_evidence_report.py
+```
+
+Recorre todas las capas, cuenta filas y genera muestras de quarantine y Gold en `docs/segundo_parcial/evidencia_ejecucion.md`. Abrir ese archivo y verificar los conteos por capa y las muestras contra los valores documentados.
+
+4. Ejecutar pipeline con carga a Cassandra:
+
+Levantar Cassandra en Docker:
+
+```bash
+docker run -d --name cassandra-bigdata -p 9042:9042 cassandra:4.1
+```
+
+Esperar a que este lista (repetir hasta que devuelva la version sin error; al inicio falla con "Connection refused" mientras arranca):
+
+```bash
+docker exec cassandra-bigdata cqlsh -e "SELECT release_version FROM system.local"
+```
+
+Correr el pipeline con carga a Cassandra:
 
 ```bash
 python scripts/run_mvp.py --with-cassandra --cassandra-host 127.0.0.1 --cassandra-port 9042 --keyspace cloud_analytics
 ```
 
-4. Crear schema y correr consultas:
+> El loader crea el keyspace y las tablas automaticamente. `cassandra/schema.cql` es **opcional**: queda como referencia para crear el schema manualmente sin Spark.
+
+5. Correr las consultas minimas (`cqlsh` va dentro del contenedor):
 
 ```bash
-cqlsh -f cassandra/schema.cql
-cqlsh -f cassandra/queries_minimas.cql
+docker exec -i cassandra-bigdata cqlsh < cassandra/queries_minimas.cql
+```
+
+Para apagar y limpiar Cassandra al terminar:
+
+```bash
+docker stop cassandra-bigdata && docker rm cassandra-bigdata
+```
+
+## Re-correr desde cero / limpiar estado
+
+`bronze_stream` es un job de streaming que usa checkpoints en `datalake/checkpoints/`. Si se regenera el landing y se vuelve a correr el pipeline **sin limpiar**, el stream considera los archivos como ya procesados e **ignora los datos nuevos**.
+
+Para reprocesar todo desde cero, borrar las capas derivadas, los checkpoints y vaciar las tablas de Cassandra:
+
+```bash
+rm -rf datalake/bronze datalake/silver datalake/gold datalake/quarantine datalake/checkpoints
+docker exec -i cassandra-bigdata cqlsh -e "TRUNCATE cloud_analytics.org_daily_usage_by_service; TRUNCATE cloud_analytics.org_top_services_14d;"
 ```
 
 ## Evidencia y entrega

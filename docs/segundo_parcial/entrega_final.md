@@ -13,6 +13,7 @@ Este proyecto fue realizado por Jeremias Feferovich, Felipe Mindlin, Martin Zahn
 ## Contexto
 
 El proyecto simula el rol del equipo de datos de un proveedor cloud que debe cubrir:
+
 - metricas operativas near real-time de uso/costo
 - procesamiento batch diario/mensual para maestros y facturacion
 
@@ -33,9 +34,17 @@ El pipeline esta pensado para datos con nulos, duplicados, inconsistencias y evo
 - `docs/segundo_parcial/mvp_checklist.md`: checklist de evidencia de entrega
 - `docs/segundo_parcial/bitacora_apropiacion_tecnica.md`: decisiones y trade-offs
 
+## Requisitos
+
+Antes de correr el proyecto, asegurate de tener:
+
+- **Java 17 (JDK)**
+- **Python 3.9 o superior**
+- **Docker**
+
 ## Quickstart (MVP segundo parcial)
 
-1. Instalar dependencias:
+1. Crear y activar un entorno virtual (recomendado) e instalar dependencias:
 
 ```bash
 python3 -m venv .venv
@@ -56,21 +65,57 @@ python scripts/bootstrap_sample_landing.py
 python scripts/run_mvp.py
 ```
 
-3. Ejecutar pipeline con carga a Cassandra:
+3. Validar la corrida:
 
 ```bash
-python scripts/run_mvp.py \
-  --with-cassandra \
-  --cassandra-host 127.0.0.1 \
-  --cassandra-port 9042 \
-  --keyspace cloud_analytics
+python scripts/generate_evidence_report.py
 ```
 
-4. Crear schema y correr consultas:
+Recorre todas las capas, cuenta filas y genera muestras de quarantine y Gold en `docs/segundo_parcial/evidencia_ejecucion.md`. Abrir ese archivo y verificar los conteos por capa y las muestras contra los valores documentados.
+
+4. Ejecutar pipeline con carga a Cassandra:
+
+Levantar Cassandra en Docker:
 
 ```bash
-cqlsh -f cassandra/schema.cql
-cqlsh -f cassandra/queries_minimas.cql
+docker run -d --name cassandra-bigdata -p 9042:9042 cassandra:4.1
+```
+
+Esperar a que este lista (repetir hasta que devuelva la version sin error; al inicio falla con "Connection refused" mientras arranca):
+
+```bash
+docker exec cassandra-bigdata cqlsh -e "SELECT release_version FROM system.local"
+```
+
+Correr el pipeline con carga a Cassandra:
+
+```bash
+python scripts/run_mvp.py --with-cassandra --cassandra-host 127.0.0.1 --cassandra-port 9042 --keyspace cloud_analytics
+```
+
+> El loader crea el keyspace y las tablas automaticamente. `cassandra/schema.cql` es **opcional**: queda como referencia para crear el schema manualmente sin Spark.
+
+5. Correr las consultas minimas (`cqlsh` va dentro del contenedor):
+
+```bash
+docker exec -i cassandra-bigdata cqlsh < cassandra/queries_minimas.cql
+```
+
+Para apagar y limpiar Cassandra al terminar:
+
+```bash
+docker stop cassandra-bigdata && docker rm cassandra-bigdata
+```
+
+## Re-correr desde cero / limpiar estado
+
+`bronze_stream` es un job de streaming que usa checkpoints en `datalake/checkpoints/`. Si se regenera el landing y se vuelve a correr el pipeline **sin limpiar**, el stream considera los archivos como ya procesados e **ignora los datos nuevos**.
+
+Para reprocesar todo desde cero, borrar las capas derivadas, los checkpoints y vaciar las tablas de Cassandra:
+
+```bash
+rm -rf datalake/bronze datalake/silver datalake/gold datalake/quarantine datalake/checkpoints
+docker exec -i cassandra-bigdata cqlsh -e "TRUNCATE cloud_analytics.org_daily_usage_by_service; TRUNCATE cloud_analytics.org_top_services_14d;"
 ```
 
 ## Nota
@@ -408,15 +453,15 @@ Supuesto de equipo: 3 personas.
 
 | Dataset | Filas | Path |
 |---|---:|---|
-| bronze_batch/customers_orgs | 3 | `/home/pipemind/big/datalake/bronze/batch/customers_orgs` |
-| bronze_batch/users | 4 | `/home/pipemind/big/datalake/bronze/batch/users` |
-| bronze_batch/billing_monthly | 3 | `/home/pipemind/big/datalake/bronze/batch/billing_monthly` |
-| bronze_stream/usage_events | 5 | `/home/pipemind/big/datalake/bronze/stream/usage_events` |
-| quarantine/late_data | 1 | `/home/pipemind/big/datalake/quarantine/late_data` |
-| silver/usage_enriched | 3 | `/home/pipemind/big/datalake/silver/usage_enriched` |
-| silver/daily_features | 3 | `/home/pipemind/big/datalake/silver/daily_features` |
-| quarantine/silver_quality | 2 | `/home/pipemind/big/datalake/quarantine/silver_quality` |
-| gold/org_daily_usage_by_service | 3 | `/home/pipemind/big/datalake/gold/org_daily_usage_by_service` |
+| bronze_batch/customers_orgs | 3 | `datalake/bronze/batch/customers_orgs` |
+| bronze_batch/users | 4 | `datalake/bronze/batch/users` |
+| bronze_batch/billing_monthly | 3 | `datalake/bronze/batch/billing_monthly` |
+| bronze_stream/usage_events | 5 | `datalake/bronze/stream/usage_events` |
+| quarantine/late_data | 1 | `datalake/quarantine/late_data` |
+| silver/usage_enriched | 3 | `datalake/silver/usage_enriched` |
+| silver/daily_features | 3 | `datalake/silver/daily_features` |
+| quarantine/silver_quality | 2 | `datalake/quarantine/silver_quality` |
+| gold/org_daily_usage_by_service | 3 | `datalake/gold/org_daily_usage_by_service` |
 
 ## Reglas de calidad y quarantine (muestra)
 
@@ -429,9 +474,9 @@ Supuesto de equipo: 3 personas.
 
 | org_id | service | usage_date | daily_cost_usd | requests | genai_tokens | carbon_kg | has_cost_anomaly |
 |---|---|---|---:|---:|---:|---:|---|
-| org_001 | compute | 2026-05-16 | 8.4 | 120.0 | 0.0 | 1.6 | False |
-| org_001 | genai | 2026-05-16 | 4.1 | 25.0 | 5000.0 | 0.3 | False |
-| org_003 | database | 2026-05-16 | 1.8 | 200.0 | 0.0 | 0.0 | False |
+| org_001 | compute | 2026-06-15 | 8.4 | 120.0 | 0.0 | 1.6 | False |
+| org_001 | genai | 2026-06-15 | 4.1 | 25.0 | 5000.0 | 0.3 | False |
+| org_003 | database | 2026-06-15 | 1.8 | 200.0 | 0.0 | 0.0 | False |
 
 ## Validacion de idempotencia
 
