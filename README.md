@@ -72,6 +72,13 @@ Para regenerar la entrega final localmente (requiere `pandoc`):
 ```bash
 # concatenar documentos y generar PDF
 pandoc docs/segundo_parcial/entrega_final.md -o docs/segundo_parcial/entrega_final.pdf
+
+pandoc docs/segundo_parcial/entrega_final.md \
+  -o docs/segundo_parcial/entrega_final.pdf \
+  -V geometry:left=25mm \
+  -V geometry:top=20mm \
+  -V geometry:right=20mm \
+  -V geometry:bottom=20mm
 ```
 
 ## Nota

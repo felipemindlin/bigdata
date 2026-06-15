@@ -498,7 +498,11 @@ python scripts/run_mvp.py
 Con carga a Cassandra:
 
 ```bash
-python scripts/run_mvp.py --with-cassandra --cassandra-host 127.0.0.1 --cassandra-port 9042 --keyspace cloud_analytics
+python scripts/run_mvp.py \
+  --with-cassandra \
+  --cassandra-host 127.0.0.1 \
+  --cassandra-port 9042 \
+  --keyspace cloud_analytics
 ```
 
 ## Evidencia de idempotencia sugerida
