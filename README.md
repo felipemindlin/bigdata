@@ -119,11 +119,10 @@ docker exec -i cassandra-bigdata cqlsh -e "TRUNCATE cloud_analytics.org_daily_us
 Para regenerar la entrega final localmente (requiere `pandoc`):
 
 ```bash
-# concatenar documentos y generar PDF
-pandoc docs/segundo_parcial/entrega_final.md -o docs/segundo_parcial/entrega_final.pdf
-
 pandoc docs/segundo_parcial/entrega_final.md \
   -o docs/segundo_parcial/entrega_final.pdf \
+  --pdf-engine=xelatex \
+  -H docs/segundo_parcial/pandoc_header.tex \
   -V geometry:left=25mm \
   -V geometry:top=20mm \
   -V geometry:right=20mm \
