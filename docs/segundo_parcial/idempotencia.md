@@ -1,18 +1,18 @@
 # Evidencia de idempotencia
 
 Se ejecuto el pipeline completo dos veces consecutivas sobre el dataset sintetico
-estabilizado (`BOOTSTRAP_REFERENCE_TS="2026-05-16T12:00:00+00:00"`).
+estabilizado (`BOOTSTRAP_REFERENCE_TS="2026-06-15T12:00:00+00:00"`).
 
 ## Procedimiento
 
 ```bash
 # Run 1 (bronze -> silver -> gold -> cassandra)
-BOOTSTRAP_REFERENCE_TS="2026-05-16T12:00:00+00:00" \
+BOOTSTRAP_REFERENCE_TS="2026-06-15T12:00:00+00:00" \
   python scripts/run_mvp.py --with-cassandra \
   --cassandra-host 127.0.0.1 --cassandra-port 9042 --keyspace cloud_analytics
 
 # Run 2 (mismo comando, sin tocar landing ni checkpoints)
-BOOTSTRAP_REFERENCE_TS="2026-05-16T12:00:00+00:00" \
+BOOTSTRAP_REFERENCE_TS="2026-06-15T12:00:00+00:00" \
   python scripts/run_mvp.py --with-cassandra \
   --cassandra-host 127.0.0.1 --cassandra-port 9042 --keyspace cloud_analytics
 ```

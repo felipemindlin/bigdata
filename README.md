@@ -40,8 +40,8 @@ pip install -r requirements.txt
 ```bash
 # generar datos de ejemplo (si no hay landing real).
 # Fijar fecha de referencia para que la demo sea reproducible
-# (la query #1 espera usage_date en mayo 2026).
-export BOOTSTRAP_REFERENCE_TS="2026-05-16T12:00:00+00:00"
+# (la query #1 espera usage_date en junio 2026).
+export BOOTSTRAP_REFERENCE_TS="2026-06-15T12:00:00+00:00"
 python scripts/bootstrap_sample_landing.py
 
 # ejecutar flujo end-to-end (bronze -> silver -> gold)

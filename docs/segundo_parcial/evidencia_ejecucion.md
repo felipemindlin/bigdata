@@ -25,9 +25,9 @@
 
 | org_id | service | usage_date | daily_cost_usd | requests | genai_tokens | carbon_kg | has_cost_anomaly |
 |---|---|---|---:|---:|---:|---:|---|
-| org_001 | compute | 2026-05-16 | 8.4 | 120.0 | 0.0 | 1.6 | False |
-| org_001 | genai | 2026-05-16 | 4.1 | 25.0 | 5000.0 | 0.3 | False |
-| org_003 | database | 2026-05-16 | 1.8 | 200.0 | 0.0 | 0.0 | False |
+| org_001 | compute | 2026-06-15 | 8.4 | 120.0 | 0.0 | 1.6 | False |
+| org_001 | genai | 2026-06-15 | 4.1 | 25.0 | 5000.0 | 0.3 | False |
+| org_003 | database | 2026-06-15 | 1.8 | 200.0 | 0.0 | 0.0 | False |
 
 ## Validacion de idempotencia
 

@@ -7,7 +7,7 @@ BASE = Path(__file__).resolve().parents[1]
 LANDING = BASE / "datalake" / "landing"
 STREAM_DIR = LANDING / "usage_events_stream"
 
-REFERENCE_TS = os.environ.get("BOOTSTRAP_REFERENCE_TS", "2026-05-16T12:00:00+00:00")
+REFERENCE_TS = os.environ.get("BOOTSTRAP_REFERENCE_TS", "2026-06-15T12:00:00+00:00")
 
 
 def write_csv(path: Path, header: list[str], rows: list[list[str]]) -> None:
