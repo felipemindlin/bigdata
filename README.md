@@ -13,28 +13,33 @@ El pipeline esta pensado para datos con nulos, duplicados, inconsistencias y evo
 
 ## Estado actual
 
-- Primer parcial: diseno preliminar completo en `docs/primer_parcial_diseno_preliminar.md`.
-- Segundo parcial (MVP tecnico): implementado en PySpark + Cassandra scripts.
+- Primer parcial: diseno preliminar en `docs/primer_parcial_diseno_preliminar.md`.
+- Segundo parcial (MVP tecnico): flujo end-to-end minimo.
+- **Entrega final**: pipeline completo sobre el dataset real (7 fuentes batch + stream),
+  5 marts de negocio y 5 consultas CQL sobre Cassandra. Documentacion en `docs/entrega_final/`.
 
 ## Estructura del repo
 
 - `src/pipeline/`: jobs por capa (`bronze_batch.py`, `bronze_stream.py`, `silver.py`, `gold.py`, `cassandra_loader.py`)
-- `scripts/run_mvp.py`: runner end-to-end del MVP tecnico
-- `cassandra/schema.cql`: keyspace y tablas
-- `cassandra/queries_minimas.cql`: consultas minimas (#1 y #2)
-- `docs/segundo_parcial/mvp_checklist.md`: checklist de evidencia de entrega
+- `scripts/run_mvp.py`: runner end-to-end del pipeline
+- `scripts/generate_evidence_report.py`: conteos por capa + muestras de Gold/quarantine
+- `cassandra/schema.cql`: keyspace `cloud_analytics` y las 5 tablas (referencia)
+- `cassandra/queries_finales.cql`: las 5 consultas obligatorias
+- `docs/entrega_final/`: arquitectura, diccionario de datos, decisiones/trade-offs, evidencia, idempotencia, outline de presentacion
 
 ## Requisitos
 
 Antes de correr el proyecto, asegurate de tener:
 
-- **Java 17 (JDK)**
+- **Java 17 o 21 (JDK)** (probado con OpenJDK 21)
 - **Python 3.9 o superior**
-- **Docker**
+- **Docker** (para Cassandra)
 
-## Quickstart (MVP segundo parcial)
+El dataset real debe estar en `datalake/landing/` (7 CSV + `usage_events_stream/*.jsonl`).
 
-1. Crear y activar un entorno virtual (recomendado) e instalar dependencias:
+## Quickstart
+
+1. Crear y activar un entorno virtual e instalar dependencias:
 
 ```bash
 python3 -m venv .venv
@@ -45,15 +50,10 @@ pip install -r requirements.txt
 2. Ejecutar pipeline local (sin carga Cassandra):
 
 ```bash
-# generar datos de ejemplo (si no hay landing real).
-# Fijar fecha de referencia para que la demo sea reproducible
-# (la query #1 espera usage_date en junio 2026).
-export BOOTSTRAP_REFERENCE_TS="2026-06-15T12:00:00+00:00"
-python scripts/bootstrap_sample_landing.py
-
-# ejecutar flujo end-to-end (bronze -> silver -> gold)
 python scripts/run_mvp.py
 ```
+
+Recorre Bronze (7 maestros + stream de eventos) -> Silver (calidad, pivot, enriquecimiento) -> Gold (5 marts).
 
 3. Validar la corrida:
 
@@ -61,17 +61,15 @@ python scripts/run_mvp.py
 python scripts/generate_evidence_report.py
 ```
 
-Recorre todas las capas, cuenta filas y genera muestras de quarantine y Gold en `docs/segundo_parcial/evidencia_ejecucion.md`. Abrir ese archivo y verificar los conteos por capa y las muestras contra los valores documentados.
+Genera conteos por capa y muestras de quarantine y Gold en `docs/entrega_final/evidencia_ejecucion.md`.
 
 4. Ejecutar pipeline con carga a Cassandra:
-
-Levantar Cassandra en Docker:
 
 ```bash
 docker run -d --name cassandra-bigdata -p 9042:9042 cassandra:4.1
 ```
 
-Esperar a que este lista (repetir hasta que devuelva la version sin error; al inicio falla con "Connection refused" mientras arranca):
+Esperar a que este lista (al inicio falla con "Connection refused" mientras arranca):
 
 ```bash
 docker exec cassandra-bigdata cqlsh -e "SELECT release_version FROM system.local"
@@ -85,10 +83,10 @@ python scripts/run_mvp.py --with-cassandra --cassandra-host 127.0.0.1 --cassandr
 
 El loader crea el keyspace y las tablas automaticamente, asi que `cassandra/schema.cql` es opcional: queda como referencia para crear el schema manualmente sin Spark.
 
-5. Correr las consultas minimas (`cqlsh` va dentro del contenedor):
+5. Correr las 5 consultas (`cqlsh` va dentro del contenedor):
 
 ```bash
-docker exec -i cassandra-bigdata cqlsh < cassandra/queries_minimas.cql
+docker exec -i cassandra-bigdata cqlsh < cassandra/queries_finales.cql
 ```
 
 Para apagar y limpiar Cassandra al terminar:
@@ -99,34 +97,26 @@ docker stop cassandra-bigdata && docker rm cassandra-bigdata
 
 ## Re-correr desde cero / limpiar estado
 
-`bronze_stream` es un job de streaming que usa checkpoints en `datalake/checkpoints/`. Si se regenera el landing y se vuelve a correr el pipeline **sin limpiar**, el stream considera los archivos como ya procesados e **ignora los datos nuevos**.
+`bronze_stream` usa checkpoints en `datalake/checkpoints/`. Si se vuelve a correr el pipeline **sin limpiar**, el stream considera los archivos como ya procesados e **ignora los datos nuevos** (comportamiento idempotente).
 
 Para reprocesar todo desde cero, borrar las capas derivadas, los checkpoints y vaciar las tablas de Cassandra:
 
 ```bash
 rm -rf datalake/bronze datalake/silver datalake/gold datalake/quarantine datalake/checkpoints
-docker exec -i cassandra-bigdata cqlsh -e "TRUNCATE cloud_analytics.org_daily_usage_by_service; TRUNCATE cloud_analytics.org_top_services_14d;"
+docker exec -i cassandra-bigdata cqlsh -e "TRUNCATE cloud_analytics.org_daily_usage_by_service; TRUNCATE cloud_analytics.org_top_services_14d; TRUNCATE cloud_analytics.revenue_by_org_month; TRUNCATE cloud_analytics.tickets_by_org_date; TRUNCATE cloud_analytics.genai_tokens_by_org_date;"
 ```
 
 ## Evidencia y entrega
 
-- Reporte de ejecucion (conteos por capa, muestras de quarantine y Gold): `docs/segundo_parcial/evidencia_ejecucion.md`.
-- Reporte de idempotencia: `docs/segundo_parcial/idempotencia.md`.
-- Compilado final listo para entrega: `docs/segundo_parcial/entrega_final.pdf`.
-
-Para regenerar la entrega final localmente (requiere `pandoc`):
-
-```bash
-pandoc docs/segundo_parcial/entrega_final.md \
-  -o docs/segundo_parcial/entrega_final.pdf \
-  --pdf-engine=xelatex \
-  -H docs/segundo_parcial/pandoc_header.tex \
-  -V geometry:left=25mm \
-  -V geometry:top=20mm \
-  -V geometry:right=20mm \
-  -V geometry:bottom=20mm
-```
+- Arquitectura y flujo: `docs/entrega_final/arquitectura.md`.
+- Diccionario de datos: `docs/entrega_final/diccionario_de_datos.md`.
+- Decisiones y trade-offs: `docs/entrega_final/decisiones_y_tradeoffs.md`.
+- Reporte de ejecucion (conteos + muestras): `docs/entrega_final/evidencia_ejecucion.md`.
+- Resultados de las 5 consultas CQL: `docs/entrega_final/cassandra_query_results.md`.
+- Idempotencia: `docs/entrega_final/idempotencia.md`.
+- Outline de presentacion: `docs/entrega_final/presentacion_outline.md`.
 
 ## Nota
 
 Los paths de landing esperados estan definidos en `src/pipeline/config.py` bajo `datalake/landing/`.
+El generador sintetico `scripts/bootstrap_sample_landing.py` queda como fallback para demo sin dataset real.

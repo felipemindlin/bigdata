@@ -12,12 +12,12 @@ from src.pipeline.bronze_stream import run_bronze_stream
 from src.pipeline.cassandra_loader import run_cassandra_load
 from src.pipeline.config import APP_NAME
 from src.pipeline.gold import run_gold
-from src.pipeline.silver import run_silver
+from src.pipeline.silver import run_silver, run_silver_billing, run_silver_tickets
 from src.pipeline.spark_utils import build_spark
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Run MVP tecnico - Segundo Parcial")
+    parser = argparse.ArgumentParser(description="Run pipeline end-to-end - Entrega Final")
     parser.add_argument("--with-cassandra", action="store_true", help="Carga Gold a Cassandra")
     parser.add_argument("--cassandra-host", default="127.0.0.1")
     parser.add_argument("--cassandra-port", default="9042")
@@ -29,6 +29,8 @@ def main() -> None:
     run_bronze_batch(spark)
     run_bronze_stream(spark)
     run_silver(spark)
+    run_silver_tickets(spark)
+    run_silver_billing(spark)
     run_gold(spark)
 
     if args.with_cassandra:

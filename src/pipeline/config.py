@@ -20,12 +20,30 @@ BATCH_SOURCES = {
         "path": LANDING_DIR / "users.csv",
         "key_cols": ["user_id"],
     },
+    "resources": {
+        "path": LANDING_DIR / "resources.csv",
+        "key_cols": ["resource_id"],
+    },
+    "support_tickets": {
+        "path": LANDING_DIR / "support_tickets.csv",
+        "key_cols": ["ticket_id"],
+    },
+    "marketing_touches": {
+        "path": LANDING_DIR / "marketing_touches.csv",
+        "key_cols": ["touch_id"],
+    },
+    "nps_surveys": {
+        "path": LANDING_DIR / "nps_surveys.csv",
+        "key_cols": ["org_id", "survey_date"],
+    },
     "billing_monthly": {
         "path": LANDING_DIR / "billing_monthly.csv",
-        "key_cols": ["org_id", "month"],
+        "key_cols": ["invoice_id"],
     },
 }
 
 USAGE_STREAM_DIR = LANDING_DIR / "usage_events_stream"
 
-APP_NAME = "cloud-provider-analytics-mvp"
+GENAI_COST_PER_1K_TOKENS_USD = 0.002
+
+APP_NAME = "cloud-provider-analytics-final"
