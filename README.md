@@ -35,7 +35,12 @@ Antes de correr el proyecto, asegurate de tener:
 - **Python 3.9 o superior**
 - **Docker** (para Cassandra)
 
-El dataset real debe estar en `datalake/landing/` (7 CSV + `usage_events_stream/*.jsonl`).
+El dataset real debe estar en `datalake/landing/` (7 CSV + `usage_events_stream/*.jsonl`). El repo
+incluye los 7 CSV, pero `usage_events_stream/*.jsonl` esta gitignoreado por tamano (ver
+`.gitignore`): hay que descomprimir el zip de datos provisto por la catedra y copiar su carpeta
+`usage_events_stream/` dentro de `datalake/landing/` antes de correr el pipeline. Sin ese paso,
+`scripts/bootstrap_sample_landing.py` queda como fallback para generar un stream de ejemplo minimo
+(no reproduce los conteos reales documentados en `docs/`).
 
 ## Quickstart
 
@@ -115,6 +120,7 @@ docker exec -i cassandra-bigdata cqlsh -e "TRUNCATE cloud_analytics.org_daily_us
 - Resultados de las 5 consultas CQL: `docs/entrega_final/cassandra_query_results.md`.
 - Idempotencia: `docs/entrega_final/idempotencia.md`.
 - Outline de presentacion: `docs/entrega_final/presentacion_outline.md`.
+- Presentacion (.pptx): `docs/entrega_final/Cloud_Provider_Analytics_Presentacion.pptx`.
 
 ## Nota
 
