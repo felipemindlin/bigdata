@@ -46,12 +46,11 @@ con minimo riesgo. El flag se materializa como `has_cost_anomaly` en el mart de 
 
 ## Modelo Cassandra: query-first + colecciones
 
-- Una tabla por consulta de negocio (las 5 obligatorias) -> sin full-scans, particion alineada a la query.
-- **Colecciones** (criterio de evaluacion): `map<text,int> counts_by_severity` en `tickets_by_org_date`
-  y `map<text,double> revenue_breakdown` en `revenue_by_org_month`. Uso con valor analitico real
-  (desglose por categoria en una sola fila), no decorativo.
+- Una tabla por consulta de negocio, sin full-scans y con partición alineada a la query.
 - `org_top_services_14d` es una tabla **preagregada** para el Top-N (clustering por costo desc), porque
   Cassandra no ordena ni agrega por columnas no-clave.
+- **Colecciones**: `map<text,int> counts_by_severity` en `tickets_by_org_date`
+  y `map<text,double> revenue_breakdown` en `revenue_by_org_month`.
 - Todo vive en un unico keyspace `cloud_analytics`.
 
 ## Performance
@@ -64,3 +63,4 @@ con minimo riesgo. El flag se materializa como `has_cost_anomaly` en el mart de 
 
 Ejecucion **local** (Spark local + Cassandra en Docker), Java 21. Se descarto Colab/AstraDB para esta
 entrega: las capturas de evidencia se generan con scripts reproducibles y el demo corre 100% local.
+

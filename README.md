@@ -13,8 +13,8 @@ El pipeline esta pensado para datos con nulos, duplicados, inconsistencias y evo
 
 ## Estado actual
 
-- Primer parcial: diseno preliminar en `docs/primer_parcial_diseno_preliminar.md`.
-- Segundo parcial (MVP tecnico): flujo end-to-end minimo.
+- Primer parcial: diseño preliminar en `docs/primer_parcial_diseno_preliminar.md`.
+- Segundo parcial (MVP técnico): flujo end-to-end mínimo.
 - **Entrega final**: pipeline completo sobre el dataset real (7 fuentes batch + stream),
   5 marts de negocio y 5 consultas CQL sobre Cassandra. Documentacion en `docs/entrega_final/`.
 
@@ -25,7 +25,7 @@ El pipeline esta pensado para datos con nulos, duplicados, inconsistencias y evo
 - `scripts/generate_evidence_report.py`: conteos por capa + muestras de Gold/quarantine
 - `cassandra/schema.cql`: keyspace `cloud_analytics` y las 5 tablas (referencia)
 - `cassandra/queries_finales.cql`: las 5 consultas obligatorias
-- `docs/entrega_final/`: arquitectura, diccionario de datos, decisiones/trade-offs, evidencia, idempotencia, outline de presentacion
+- `docs/entrega_final/`: arquitectura, diccionario de datos, decisiones/trade-offs, evidencia, idempotencia, presentación.
 
 ## Requisitos
 
@@ -113,14 +113,15 @@ docker exec -i cassandra-bigdata cqlsh -e "TRUNCATE cloud_analytics.org_daily_us
 
 ## Evidencia y entrega
 
-- Arquitectura y flujo: `docs/entrega_final/arquitectura.md`.
-- Diccionario de datos: `docs/entrega_final/diccionario_de_datos.md`.
-- Decisiones y trade-offs: `docs/entrega_final/decisiones_y_tradeoffs.md`.
-- Reporte de ejecucion (conteos + muestras): `docs/entrega_final/evidencia_ejecucion.md`.
-- Resultados de las 5 consultas CQL: `docs/entrega_final/cassandra_query_results.md`.
-- Idempotencia: `docs/entrega_final/idempotencia.md`.
-- Outline de presentacion: `docs/entrega_final/presentacion_outline.md`.
-- Presentacion (.pptx): `docs/entrega_final/Cloud_Provider_Analytics_Presentacion.pptx`.
+Dentro de `docs/entrega_final`, se encuentran los archivos:
+
+- Arquitectura y flujo: `arquitectura.md`.
+- Diccionario de datos: `diccionario_de_datos.md`.
+- Decisiones y trade-offs: `decisiones_y_tradeoffs.md`.
+- Reporte de ejecucion (conteos + muestras): `evidencia_ejecucion.md`.
+- Resultados de las 5 consultas CQL: `cassandra_query_results.md`.
+- Idempotencia: `idempotencia.md`.
+- Presentacion: `Cloud_Provider_Analytics_Presentacion.pptx`.
 
 ## Nota
 
