@@ -1,22 +1,22 @@
 # Arquitectura - Entrega Final
 
-## Patron: Lambda (batch + streaming) sobre un Data Lake por zonas + serving en Cassandra
+## Patrón: Lambda (batch + streaming) sobre un Data Lake por zonas + serving en Cassandra
 
 ```text
-FUENTES (Landing, raw inmutable)
+FUENTES (Landing, fila inmutable)
   batch:  customers_orgs, users, resources, support_tickets, marketing_touches, nps_surveys, billing_monthly
   stream: usage_events_stream/*.jsonl  (schema v1/v2, formato EAV metric+value+unit)
       |
       v
-+-------------------------------------------------------------------------------+
-|  DATA LAKE (Parquet por zonas, gestionado por Spark)                          |
-|                                                                               |
-|  LANDING  -->  BRONZE  -->  SILVER  -->  GOLD                                  |
-|  raw           tipado +     calidad +     5 marts de negocio                   |
-|                ingest_ts    quarantine    (FinOps / Soporte / Producto)        |
-|                watermark     + pivot EAV                                       |
-|                (stream)      + joins                                           |
-+-------------------------------------------------------------------------------+
++--------------------------------------------------------------------------+
+|  DATA LAKE (Parquet por zonas, gestionado por Spark)                     |
+|                                                                          |
+|  LANDING  -->  BRONZE  -->  SILVER  -->  GOLD                            |
+|  raw           tipado +     calidad +     5 marts de negocio             |
+|                ingest_ts    quarantine    (FinOps / Soporte / Producto)  |
+|                watermark     + pivot EAV                                 |
+|                (stream)      + joins                                     |
++--------------------------------------------------------------------------+
       |
       v
 +----------------------------+      +---------------------------+
@@ -29,16 +29,16 @@ FUENTES (Landing, raw inmutable)
 
 ## Flujo por path
 
-**Batch**: Landing CSV -> `bronze_batch` (schema explicito, dedup por clave, `ingest_*`, particion por
+**Batch**: Landing CSV -> `bronze_batch` (schema explícito, deduplicado por clave, `ingest_*`, partición por
 `ingest_date`) -> `silver` (tickets, billing normalizado a USD, quality + quarantine) -> `gold`
 (revenue, tickets marts) -> Cassandra.
 
 **Streaming**: `usage_events_stream` -> `bronze_stream` (Structured Streaming `availableNow`,
-`withWatermark`, late/malformed -> quarantine, particion `ingest_date`) -> `silver` (dedup por
+`withWatermark`, late/malformed -> quarantine, partición `ingest_date`) -> `silver` (dedup por
 `event_id`, cast con fallback, pivot EAV, anomalia p99, enriquecimiento orgs/resources) -> `gold`
 (org_daily, genai marts) -> Cassandra.
 
-## Mapeo a las 5Vs
+## Mapeos
 
 - **Volumen**: 43.200 eventos + 7 maestros; Parquet particionado por fecha.
 - **Velocidad**: Structured Streaming en micro-lotes (`maxFilesPerTrigger`), watermark 1h.
@@ -46,7 +46,7 @@ FUENTES (Landing, raw inmutable)
 - **Veracidad**: reglas de calidad por path, flags por registro, 4 zonas de quarantine, dedup idempotente.
 - **Valor**: 5 marts (FinOps: uso/revenue; Soporte: tickets/SLA; Producto: GenAI) servidos query-first.
 
-## Componentes (codigo)
+## Componentes (código)
 
 | Capa | Modulo |
 |---|---|

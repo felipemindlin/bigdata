@@ -1,6 +1,6 @@
 # Evidencia de idempotencia - Entrega Final
 
-Se ejecuto `python scripts/run_mvp.py --with-cassandra` dos veces consecutivas **sin limpiar estado**
+Se ejecutó `python scripts/run_mvp.py --with-cassandra` dos veces consecutivas **sin limpiar estado**
 sobre el dataset real (`datalake/landing/`).
 
 ## Mecanismos de idempotencia
@@ -9,9 +9,9 @@ sobre el dataset real (`datalake/landing/`).
   ya procesados no se vuelven a ingestar (`availableNow` + checkpoint).
 - **Dedup por `event_id`**: aplicado en Silver (batch `dropDuplicates`), no pierde eventos fuera de orden.
 - **Bronze/Silver/Gold Parquet**: escritura en modo `overwrite` por dataset.
-- **Cassandra**: `INSERT`/`append` por clave primaria natural = upsert. Re-cargar las mismas filas no duplica.
+- **Cassandra**: `INSERT`/`append` por clave primaria natural = upsert significa que recargar las mismas filas no duplica.
 
-## Conteos Cassandra (antes vs despues de la 2da corrida)
+## Conteos Cassandra (antes vs después de la 2da corrida)
 
 | Tabla | Antes | Despues |
 |---|---:|---:|
@@ -35,7 +35,7 @@ sobre el dataset real (`datalake/landing/`).
 | gold/tickets_by_org_date | 910 |
 | gold/genai_tokens_by_org_date | 848 |
 
-## Conclusion
+## Conclusión
 
-Los conteos permanecen estables entre corridas: la re-ejecucion **no incrementa filas** ni en Parquet
-ni en Cassandra. El pipeline es idempotente end-to-end.
+Los conteos permanecen estables entre corridas: la re-ejecucion **no incrementa filas** 
+ni en Parquet ni en Cassandra, por lo que podemos decir que el pipeline es idempotente end-to-end.
