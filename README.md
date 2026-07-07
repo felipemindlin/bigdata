@@ -122,6 +122,7 @@ Dentro de `docs/entrega_final`, se encuentran los archivos:
 - Resultados de las 5 consultas CQL: `cassandra_query_results.md`.
 - Idempotencia: `idempotencia.md`.
 - Presentacion: `Cloud_Provider_Analytics_Presentacion.pptx`.
+- Video de presentacion: [`https://youtu.be/s0kXyakbjSg`](https://youtu.be/s0kXyakbjSg)
 
 ## Nota
 
